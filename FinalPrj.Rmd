@@ -1,0 +1,237 @@
+---
+title: "FinalProj"
+author: "a1799241"
+date: "2023-10-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+The dataset used for this report is the IMDB Movies Dataset from Kaggle which is s .csv file
+https://www.kaggle.com/datasets/ashishjangra27/imdb-movies-dataset
+
+This dataset comes with 2 data types: Character and Numeric.
+To meet the character, numeric and date requirements, the character column "year" was transformed to a date. However, due to the nature of the column, a lot of the years were defaulted to NA, so the year was not used in any analysis.
+
+The dataset originally comes with 14 variables.
+id, name, year, rating, certificate, duration, genre, votes, gross_income, directors_id, directors_name, stars_id, stars_name and description
+
+Cleaning this dataset included the following.
+1 - making columns based on if the movie or tv show falls under the romance genre
+2 - Removing items that are 0 minutes long, earn 0 gross income and removing the id columns and the description
+3 - turn the dataset into two datasets (movies and tv shows) based on the certificate
+4 - transformed the year column to a date
+5 - the column rating is transformed to numeric values
+6 - merge the moovie and tv show datasets to show whether each item is a movie or tv show
+
+
+```{r Startup}
+
+pacman::p_load(tidyverse, skimr, dplyr, tidymodels)
+
+movies <- read_csv(here::here('movies.csv'))
+
+```
+`
+```{r DataCleaning Genre}
+
+movies$RomanceTrue <- grepl('Romance', movies$genre, ignore.case = TRUE)
+
+
+```
+```{r Clean}
+
+
+movies <-
+  subset(movies, select = -c(id, directors_id, stars_id, description))
+
+#get rid of all items that are '0 minutes long'
+
+movies <- filter(movies, duration > '0 min')
+
+#remove all items that earned 0 gross income
+movies <- filter(movies, gross_income > 0)
+
+
+#remove TV
+moovies <- movies %>%
+  filter(!grepl('TV', certificate))
+
+
+tvshow <- movies %>%
+  filter(grepl('TV', certificate))
+
+
+moovies$year_as_date <-
+  as.Date(sub("\\((\\d{4})\\)", "\\1-01-01", moovies$year), format = "%Y-%m-%d")
+
+moovies$year_as_date <- format(moovies$year_as_date, "%Y")
+
+
+
+moovies$rating <- as.numeric(moovies$rating)
+tvshow$rating <- as.numeric(tvshow$rating)
+
+moovies$type <- 'movie'
+tvshow$type <- 'tvshow'
+
+movieall <- bind_rows(moovies, tvshow)
+
+  
+
+
+```
+
+```{r skim}
+
+moovies %>%
+  skim_without_charts()
+
+tvshow %>%
+  skim_without_charts()
+
+```
+
+
+
+
+The relationship between the certificate and the gross income is inconsistent enough that there are too many outliers to see the relationship between them. This is for both movies and tv shows. Excluding outliers, the spread is narrow, as shown by the box plots. The shape is mostly left-skewed for movies, and slightly right-skewed for tv shows, however it should be noted that there is no order. for the certiticate.
+
+
+There is a normal distribution for the rating of the movie/tv show and the gross income at about 7.5 for the rating for movies and 8 for tv shows. The relationship is quite strong. However, it should be noted that this means that the relationship is not linear and there are many outliers. The shape is left-skewed
+
+
+
+
+```{r}
+
+certgross1 <-
+  ggplot(movieall, aes(x = certificate, y = gross_income)) +
+  geom_boxplot(aes(fill = type)) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 0)) + 
+  labs(title = 'Box Plot of Certificate vs Gross Income',
+       y = 'Gross Income',
+       x = 'Certificate',
+       fill = 'Type of Media')
+certgross1
+
+
+certgross2 <-
+  ggplot(movieall, aes(x = certificate, y = gross_income)) + 
+  geom_col(aes(fill = type)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0)) + 
+  labs(title = 'Bar Graph of Certificate vs Gross Income',
+       y = 'Gross Income',
+       fill = 'Type of Media')
+certgross2
+
+
+RatingIncomeM <-
+  ggplot(movieall, aes(x = rating, y = gross_income)) + 
+  geom_point(aes(col = type)) +
+  labs(title = 'Scatterplot of Rating vs Gross Income',
+       y = 'Gross Income',
+       x = 'Rating',
+       col = 'Type of Media')
+RatingIncomeM
+
+
+```
+
+Multiple Regression is used to see how signficiant other factors are to determining the gross income of a movie or tv show.
+
+A linear model isn't used as using ggplot, we can note that the relationship between gross income and rating is not linear.
+
+
+```{r}
+#MULTIPLE REG
+
+movies2_lm  <-
+  lm(gross_income ~ rating + certificate + RomanceTrue, data = moovies)
+summary(movies2_lm)
+
+tv2_lm  <-
+  lm(gross_income ~ rating + certificate + RomanceTrue, data = tvshow)
+summary(tv2_lm)
+
+all_lm <-
+  lm(gross_income ~ rating + certificate + RomanceTrue, data = movieall)
+summary(all_lm)
+
+```
+
+Assume we are trying to find out the predicted gross income of a new movie with a predicted 7.5 rating, PG rating and with Romance in it's genre.
+
+
+```{r Confidence Interval}
+
+new_data <-
+  tibble(rating = 7.5,
+         certificate = 'PG',
+         RomanceTrue = TRUE)
+
+newpred <- predict(movies2_lm, new_data, interval = 'confidence')
+newpred
+
+
+```
+Now, we will determine if the movie should include the genre Romance. The reason we are not comparing types (eg. Movie or Tv Show) is because when using multiple regression, the type shows up as NA. 
+
+
+Using logistic regression and plotting ROC curves, we can determine that the genre Romance has very little to do with the gross income or rating
+
+
+```{r}
+
+#logistic reg
+
+movieall$certificate <- as.factor(movieall$certificate)
+movieall$RomanceTrue <- as.factor(movieall$RomanceTrue)
+
+set.seed(112)
+movie_split <- initial_split(movieall)
+train_data <- training(movie_split)
+test_data <- testing(movie_split)
+
+
+#update_levels(test_data, train_data)
+
+
+movie_rec <-
+  recipe(RomanceTrue ~ rating + gross_income, data = train_data) %>%
+  #step_other(RomanceTrue, threshold = 0.01) %>%
+  prep()
+
+
+train_data_clean <- juice(movie_rec)
+
+lr_mod <-
+  logistic_reg() %>%
+  set_engine("glm")
+
+movie_wflow <- workflow() %>%
+  add_model(lr_mod) %>%
+  add_recipe(movie_rec)
+
+movie_fit <- movie_wflow %>%
+  fit(data = train_data)
+
+movie_fit %>%
+  extract_fit_parsnip() %>%
+  tidy()
+
+
+
+movie_aug <-
+  augment(movie_fit, test_data)
+
+
+movie_aug %>%
+  roc_curve(.pred_FALSE, truth = RomanceTrue) %>%
+  autoplot()
+
+
+
+```
+
