@@ -1,8 +1,9 @@
 # Movie-AnimationProject
-My Data Taming and Prediction project looking at different movies
+My Data Taming and Prediction project looking at different movies. Data Taming and Prediction was the first R class that I had taken, so it's interesting to see how I've grown since then.
 
 The dataset used for this report is the IMDB Movies Dataset from Kaggle which is a .csv file 
 https://www.kaggle.com/datasets/ashishjangra27/imdb-movies-dataset
+###THIS FILE IS TOO BIG TO UPLOAD, PLEASE DOWNLOAD IT YOURSELF FROM THIS LINK###
 
 This dataset comes with 2 data types: Character and Numeric. To meet the character, numeric and date
 requirements, the character column “year” was transformed to a date. However, due to the nature of the
