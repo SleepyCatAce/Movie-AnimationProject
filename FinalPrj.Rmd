@@ -42,7 +42,6 @@ movies$RomanceTrue <- grepl('Romance', movies$genre, ignore.case = TRUE)
 ```
 ```{r Clean}
 
-
 movies <-
   subset(movies, select = -c(id, directors_id, stars_id, description))
 
@@ -78,9 +77,6 @@ tvshow$type <- 'tvshow'
 
 movieall <- bind_rows(moovies, tvshow)
 
-  
-
-
 ```
 
 ```{r skim}
@@ -94,14 +90,10 @@ tvshow %>%
 ```
 
 
-
-
 The relationship between the certificate and the gross income is inconsistent enough that there are too many outliers to see the relationship between them. This is for both movies and tv shows. Excluding outliers, the spread is narrow, as shown by the box plots. The shape is mostly left-skewed for movies, and slightly right-skewed for tv shows, however it should be noted that there is no order. for the certiticate.
 
 
 There is a normal distribution for the rating of the movie/tv show and the gross income at about 7.5 for the rating for movies and 8 for tv shows. The relationship is quite strong. However, it should be noted that this means that the relationship is not linear and there are many outliers. The shape is left-skewed
-
-
 
 
 ```{r}
@@ -234,4 +226,5 @@ movie_aug %>%
 
 
 ```
+
 
